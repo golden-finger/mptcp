@@ -1,0 +1,71 @@
+#!/bin/sh
+# A script for setting up routing tables for MPTCP in the N950.
+
+# Copy this script into /etc/network/if-up.d/
+
+#set -e
+
+. /etc/network/mptcp/functions
+
+
+if [ "x${METHOD}" = "xdhcp" ]; then
+        DHCP4_IP_ADDRESS=true
+elif [ "x${METHOD}" = "xnone" ]; then
+	exit 0
+fi
+
+echo "action mode: $MODE" > /tmp/if_up_env.$IFACE
+
+if [ "$IFACE" = lo -o "$MODE" != "start" ]; then
+        exit 0
+fi
+
+env >> /tmp/if_up_env.$IFACE
+
+DEVICE_IFACE=$IFACE
+
+# FIRST, make a table-alias
+if [ `grep $DEVICE_IFACE /etc/iproute2/rt_tables | wc -l` -eq 0 ]; then
+	NUM=`cat /etc/iproute2/rt_tables | wc -l`
+	echo "$NUM  $DEVICE_IFACE" >> /etc/iproute2/rt_tables
+fi
+
+CIDR="$(ip addr show dev $IFACE | grep "inet[[:blank:]]" | head -n 1 | awk '{print $2}')"
+IP4_ADDRESS_0="${CIDR%/*}"
+NETMASK="${CIDR#*/}"
+NETMASK_OFFSET=`expr 32 - $NETMASK`
+IP4_HEX=`ip2num $IP4_ADDRESS_0`
+DHCP4_NETWORK_NUMBER=`num2ip "$((0xFFFFFFFF >> NETMASK_OFFSET << NETMASK_OFFSET & IP4_HEX))"`
+DHCP4_ROUTERS="$(ip route show | grep default | grep $IFACE | awk '{printf $3}')"
+
+echo "============= route table ===================" >> /tmp/if_up_env.$IFACE
+ip route show >> /tmp/if_up_env.$IFACE
+echo "====== defualt gateway: $DHCP4_ROUTERS ==========" >> /tmp/if_up_env.$IFACE
+
+# delete default gw
+if [ "x${DHCP4_ROUTERS}" = "x" ]; then
+	exit 0
+else
+	echo "delete defualt gateway: $DHCP4_ROUTERS ... " >> /tmp/if_up_env.$IFACE
+	ip route del default
+fi
+
+echo "ip adress of $IFACE(via dhcp): $IP4_ADDRESS_0, netmask: $NETMASK_OFFSET, network: $DHCP4_NETWORK_NUMBER, route: $DHCP4_ROUTERS" >> /tmp/if_up_env.$IFACE
+
+if [ $DHCP4_IP_ADDRESS ]; then
+        echo " ip rule add from $IP4_ADDRESS_0 table $DEVICE_IFACE ... " >> /tmp/if_up_env.$IFACE
+        ip rule add from $IP4_ADDRESS_0 table $DEVICE_IFACE
+
+	echo " ip route add table $DEVICE_IFACE to $DHCP4_NETWORK_NUMBER/$NETMASK dev $DEVICE_IFACE scope link ... " >> /tmp/if_up_env.$IFACE
+	ip route add table $DEVICE_IFACE to $DHCP4_NETWORK_NUMBER/$NETMASK dev $DEVICE_IFACE scope link
+
+	echo " ip route add table $DEVICE_IFACE default via $DHCP4_ROUTERS dev $DEVICE_IFACE ... " >> /tmp/if_up_env.$IFACE
+	ip route add table $DEVICE_IFACE default via $DHCP4_ROUTERS dev $DEVICE_IFACE
+
+	echo " done ... " >> /tmp/if_up_env.$IFACE
+else
+	# PPP-interface
+	IPADDR=`echo $IP4_ADDRESS_0 | cut -d \   -f 1 | cut -d / -f 1`
+	ip route add table $DEVICE_IFACE default dev $DEVICE_IP_IFACE scope link
+	ip rule add from $IPADDR table $DEVICE_IFACE
+fi
