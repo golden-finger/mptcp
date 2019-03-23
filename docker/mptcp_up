@@ -26,7 +26,7 @@ DEVICE_IFACE=$IFACE
 
 # FIRST, make a table-alias
 if [ `grep $DEVICE_IFACE /etc/iproute2/rt_tables | wc -l` -eq 0 ]; then
-	NUM=`cat /etc/iproute2/rt_tables | wc -l`
+	NUM=$(expr `ethtool -i $IFACE  | grep bus-info | awk '{printf $2}' | sed 's|[:.]||g'` + 0)
 	echo "$NUM  $DEVICE_IFACE" >> /etc/iproute2/rt_tables
 fi
 
@@ -42,12 +42,8 @@ echo "============= route table ===================" >> /tmp/if_up_env.$IFACE
 ip route show >> /tmp/if_up_env.$IFACE
 echo "====== defualt gateway: $DHCP4_ROUTERS ==========" >> /tmp/if_up_env.$IFACE
 
-# delete default gw
 if [ "x${DHCP4_ROUTERS}" = "x" ]; then
 	exit 0
-else
-	echo "delete defualt gateway: $DHCP4_ROUTERS ... " >> /tmp/if_up_env.$IFACE
-	ip route del default
 fi
 
 echo "ip adress of $IFACE(via dhcp): $IP4_ADDRESS_0, netmask: $NETMASK_OFFSET, network: $DHCP4_NETWORK_NUMBER, route: $DHCP4_ROUTERS" >> /tmp/if_up_env.$IFACE
