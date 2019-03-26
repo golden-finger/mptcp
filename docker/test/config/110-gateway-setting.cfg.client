@@ -1,0 +1,5 @@
+
+# sysctl net.mptcp.mptcp_enabled net.mptcp.mptcp_checksum net.mptcp.mptcp_syn_retries net.mptcp.mptcp_debug net.mptcp.mptcp_path_manager net.mptcp.mptcp_scheduler net.ipv4.tcp_congestion_control
+
+bootcmd:
+ - sysctl net.mptcp.mptcp_path_manager=fullmesh
