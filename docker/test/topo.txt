@@ -1,5 +1,5 @@
 
-
+Topology:
 
 ---- : Client Side Network
 ++++ : Server Side Network
@@ -25,3 +25,15 @@
                       172.19.1.2  #         # 172.27.1.22
                                   ###########
 
+Test step:
+
+1、nc -l 7788 > /dev/null （server side)
+
+2、tar -cf - /var /usr | nc 172.27.1.30 7788(client side)
+
+3、tcpdump -n -i any "tcp[tcpflags] & tcp-push != 0" and port 7788 and host 172.19.1.10(client side)
+
+   22:12:15.796416 IP 172.19.1.10.43189 > 172.27.1.30.7788: Flags [P.], seq 591678980:591679656, ack 1, win 457, options [nop,nop,TS val 2512686307 ecr 4038818983,mptcp dss ack 6559569 seq 1728268779 subseq 591697545 len 676 csum 0x7c12], length 676
+
+4、tcpdump -n -i any "tcp[tcpflags] & tcp-push != 0" and port 7788 and host 172.27.1.21(Server side, optional)
+   22:12:08.126052 IP 172.27.1.21.59354 > 172.27.1.30.7788: Flags [P.], seq 70463796:70464472, ack 1, win 457, options [nop,nop,TS val 3163366047 ecr 2012624130,mptcp dss ack 6559569 seq 1558997483 subseq 383657485 len 676 csum 0x7943], length 676
