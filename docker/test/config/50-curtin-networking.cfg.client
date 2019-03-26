@@ -1,0 +1,43 @@
+
+# cloud init configuration
+# file path:
+#   /etc/cloud/cloud.cfg.d/50-curtin-networking.cfg
+
+network:
+  ethernets:
+    #management interface(172.17.1.10, gw 172.17.1.2)
+    enp0s3:
+      dhcp4: false
+      addresses: [172.17.1.10/24]
+      #gateway4: 172.17.1.2
+    # client left(172.18.1.10, gw 172.18.1.2)
+    enp0s8:
+      dhcp4: false
+      addresses: [172.18.1.10/24]
+      routes:
+      - to: 0.0.0.0/0
+        via: 172.18.1.2
+        table: 108
+      - to: 172.18.1.0/24
+        scope: link
+        table: 108
+      routing-policy:
+      - from: 172.18.1.10
+        table: 108
+    # client right(172.19.1.10, gw 172.19.1.2)
+    enp0s9:
+      dhcp4: false
+      addresses: [172.19.1.10/24]
+      routes:
+      - to: 0.0.0.0/0
+        via: 172.19.1.2
+        table: 109
+      - to: 172.19.1.0/24
+        scope: link
+        table: 109
+      routing-policy:
+      - from: 172.19.1.10
+        table: 109
+  version: 2
+
+
